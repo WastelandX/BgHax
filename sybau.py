@@ -1,56 +1,133 @@
-import requests
 import os
-import time
+import logging
+import colorama
+from colorama import Fore, Style
+import art 
+import discord
+import asyncio
+from multiprocessing import Process
+from tenacity import retry, stop_after_attempt, wait_exponential
+import signal
+import sys
 
-API_KEY = os.getenv("HF_TOKEN")
-if not API_KEY:
-    print("❌ HF_TOKEN not set")
-    exit()
+colorama.init(autoreset=True)
 
-MODEL = "google/gemma-2b-it"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL}"
+def signal_handler(sig, frame):
+    print(f"{Style.BRIGHT}{Fore.RED}[-] Bot terminated by user.")
+    sys.exit(0)
 
-headers = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json"
-}
+signal.signal(signal.SIGINT, signal_handler)
 
-history = []
+def DarkkPy():
+    darkkpy = art.text2art("Overload")
+    print(f"┏━━━°⌜ 赤い糸 ⌟°━━━┓")
+    print(f"{Style.BRIGHT}{Fore.RED}{darkkpy}")
+    print(f"┗━━━°⌜ 赤い糸 ⌟°━━━┛")
+    print(Style.BRIGHT + "╔════•●•════╗")
+    print(f"{Style.BRIGHT}{Fore.GREEN}  [+] AUTO SPAMMER")
+    print(f"{Style.BRIGHT}{Fore.CYAN}  [+] Made By DarkkPy")
+    print(Style.BRIGHT + "╚════•●•════╝")
 
-def ask_ai(prompt):
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 250,
-            "temperature": 0.8,
-            "top_p": 0.9,
-            "repetition_penalty": 1.3,
-            "return_full_text": False
-        }
-    }
+def getToken(file_path):
+    try:
+        with open(file_path, "r") as file:
+            tokens = [line.strip() for line in file.readlines() if line.strip()]
+        return tokens
+    except FileNotFoundError:
+        print(f"{Style.BRIGHT}{Fore.RED}[-] Error: The file '{file_path}' was not found.")
+        return []
+    except Exception as e:
+        print(f"{Style.BRIGHT}{Fore.RED}[-] Error reading tokens from file: {e}")
+        return []
 
-    r = requests.post(API_URL, headers=headers, json=payload)
-    if r.status_code != 200:
-        return "⚠️ Model loading or rate-limited. Try again."
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(min=1, max=10))
+async def send_message(target_channel, message, token):
+    await target_channel.send(message)
+    print(f"{Style.BRIGHT}{Fore.CYAN}[+] Account {token[:10]} sent: {message}")
 
-    data = r.json()
-    return data[0]["generated_text"].strip()
+def run_bot(token, channel_id, message, verbose):
+    class SpamBot(discord.Client):
+        async def on_ready(self):
+            print(f"\n{Style.BRIGHT}{Fore.GREEN}[+] Account {token[:10]}... is ready and will spam channel {channel_id}.")
+            target_channel = self.get_channel(channel_id)
+            if not target_channel:
+                print(f"{Style.BRIGHT}{Fore.YELLOW}[-] Account {token[:10]} cannot find the channel {channel_id} or has no access.")
+                await self.close()
+                return
 
-print("=" * 40)
-print(" Sybau-GPT • HuggingFace AI")
-print(" Type 'exit' to quit")
-print("=" * 40)
+            while True:
+                try:
+                    await send_message(target_channel, message, token)
 
-while True:
-    user = input("You > ").strip()
-    if user.lower() == "exit":
-        break
+                    if verbose == 'y':
+                        print(f"{Style.BRIGHT}{Fore.YELLOW}[+] Message sent by account {token[:10]}.")
 
-    history.append(f"User: {user}")
-    context = "\n".join(history[-4:]) + "\nAI:"
+                    await asyncio.sleep(0.05)
 
-    print("Sybau-GPT > thinking...")
-    reply = ask_ai(context)
+                except discord.errors.HTTPException as e:
+                    if e.status == 429:
+                        retry_after = e.retry_after if hasattr(e, 'retry_after') else 2
+                        print(f"{Style.BRIGHT}{Fore.RED}[-] Account {token[:10]} is rate limited. Retrying after {retry_after} seconds.")
+                        await asyncio.sleep(retry_after)
 
-    print("Sybau-GPT >", reply)
-    history.append(f"AI: {reply}")
+                except discord.errors.Forbidden:
+                    print(f"{Style.BRIGHT}{Fore.YELLOW}[-] Account {token[:10]} does not have permission to send messages to the channel.")
+                    break
+
+                except discord.errors.NotFound:
+                    print(f"{Style.BRIGHT}{Fore.RED}[-] Channel {channel_id} not found or account {token[:10]} was removed.")
+                    break
+
+                except discord.errors.LoginFailure:
+                    print(f"{Style.BRIGHT}{Fore.RED}[-] Invalid token for account {token[:10]}.")
+                    break
+
+                except Exception as e:
+                    print(f"{Style.BRIGHT}{Fore.RED}[-] Unexpected error for account {token[:10]}: {e}")
+                    break
+
+        async def on_disconnect(self):
+            print(f"{Style.BRIGHT}{Fore.YELLOW}[-] Account {token[:10]} has been disconnected.")
+
+    bot = SpamBot()
+    try:
+        bot.run(token, bot=False)
+    except discord.errors.LoginFailure:
+        print(f"{Style.BRIGHT}{Fore.RED}[-] Account {token[:10]} failed to log in due to invalid token.")
+    except Exception as e:
+        print(f"{Style.BRIGHT}{Fore.RED}[-] Unexpected error for account {token[:10]} during startup: {e}")
+
+
+if __name__ == "__main__":
+    DarkkPy()
+
+    while True:
+        verbose = input(f"{Style.BRIGHT}{Fore.CYAN} »--•--« Enable verbose mode (y/n): ").strip().lower()
+        if verbose in ['y', 'n']:
+            break
+        else:
+            print(f"{Style.BRIGHT}{Fore.RED}[-] Invalid input. Please enter 'y' for yes or 'n' for no.")
+
+    while True:
+        try:
+            channel_id = int(input(f"{Style.BRIGHT}{Fore.CYAN} »--•--« Enter the channel ID: "))
+            break
+        except ValueError:
+            print(f"{Style.BRIGHT}{Fore.RED}[-] Invalid channel ID. Please enter a numeric value.")
+
+    message = input(f"{Style.BRIGHT}{Fore.CYAN} »--•--« Enter the message to spam: ")
+
+    token_file = "tokens.txt"
+    tokens = getToken(token_file)
+
+    if not tokens:
+        print(f"{Style.BRIGHT}{Fore.RED}[-] No valid tokens found. Exiting.")
+    else:
+        processes = []
+        for token in tokens:
+            p = Process(target=run_bot, args=(token, channel_id, message, verbose))
+            p.start()
+            processes.append(p)
+
+        for p in processes:
+            p.join()
