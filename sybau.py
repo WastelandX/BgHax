@@ -4,7 +4,7 @@ import time
 
 BANNER = """
 ===========================
-  SYBAU GPT (Local CLI)
+  NIGGA GPT (Local CLI)
 ===========================
 Type 'exit' to quit
 """
