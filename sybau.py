@@ -7,7 +7,7 @@ if not API_KEY:
     print("❌ HF_TOKEN not set")
     exit()
 
-MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
+MODEL = "google/gemma-2b-it"
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL}"
 
 headers = {
